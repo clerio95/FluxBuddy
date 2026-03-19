@@ -50,6 +50,44 @@ def _read_csv(
         return []
 
 
+def _resolve_file_path(raw_path: str) -> str:
+    raw = (raw_path or "").strip().strip('"').strip("'")
+    if not raw:
+        return ""
+
+    expanded = os.path.expandvars(os.path.expanduser(raw))
+    candidates = [expanded]
+
+    if not os.path.isabs(expanded):
+        # Try relative to current working directory first.
+        candidates.append(os.path.abspath(expanded))
+
+        # If user includes project folder name in .env, avoid duplicated prefix.
+        normalized = expanded.replace("\\", "/")
+        parts = [p for p in normalized.split("/") if p and p != "."]
+        cwd_name = os.path.basename(os.getcwd())
+        if parts and parts[0].lower() == cwd_name.lower() and len(parts) > 1:
+            trimmed = os.path.join(*parts[1:])
+            candidates.append(os.path.abspath(trimmed))
+
+    seen = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if os.path.exists(candidate):
+            return candidate
+
+    return os.path.abspath(expanded) if not os.path.isabs(expanded) else expanded
+
+
+def _to_int(raw: str, default: int) -> int:
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return default
+
+
 def _filter_upcoming(
     rows: list[dict], days: int, date_column: str,
 ) -> list[dict]:
@@ -67,16 +105,17 @@ def _filter_upcoming(
 class DeadlinesModule(FluxModule):
     def __init__(self, ctx: ModuleContext):
         self._ctx = ctx
-        self._file_path = ctx.config.get("file_path", "")
+        self._file_path_raw = ctx.config.get("file_path", "")
+        self._file_path = _resolve_file_path(self._file_path_raw)
         self._date_column = ctx.config.get("date_column", "DATE")
         self._desc_column = ctx.config.get("description_column", "DESCRIPTION")
         self._csv_sep = ctx.config.get("csv_separator", ";")
         self._csv_encoding = ctx.config.get("csv_encoding", "utf-8-sig")
-        self._alert_days = int(ctx.config.get("alert_days", "30"))
+        self._alert_days = _to_int(ctx.config.get("alert_days", "30"), 30)
         alert_time = ctx.config.get("alert_time", "09:10")
         parts = alert_time.split(":")
-        self._alert_hour = int(parts[0]) if len(parts) >= 2 else 9
-        self._alert_minute = int(parts[1]) if len(parts) >= 2 else 10
+        self._alert_hour = _to_int(parts[0], 9) if len(parts) >= 2 else 9
+        self._alert_minute = _to_int(parts[1], 10) if len(parts) >= 2 else 10
 
     @property
     def name(self) -> str:
@@ -93,7 +132,7 @@ class DeadlinesModule(FluxModule):
 
     @property
     def jobs(self) -> list[JobSpec]:
-        if not self._file_path:
+        if not self._file_path_raw or not os.path.exists(self._file_path):
             return []
         return [
             JobSpec(
@@ -104,10 +143,20 @@ class DeadlinesModule(FluxModule):
         ]
 
     async def _cmd_deadlines(self, ctx: InteractionContext) -> None:
-        if not self._file_path:
+        if not self._file_path_raw:
             await ctx.reply(
                 "⚠️ <b>Deadlines file not configured.</b>\n\n"
                 "Set <code>DEADLINES_FILE_PATH</code> in .env"
+            )
+            return
+
+        if not os.path.exists(self._file_path):
+            await ctx.reply(
+                "⚠️ <b>Deadlines file not found.</b>\n\n"
+                f"Configured: <code>{_html.escape(self._file_path_raw)}</code>\n"
+                f"Resolved: <code>{_html.escape(self._file_path)}</code>\n\n"
+                "Tip: use a path relative to project root, e.g. "
+                "<code>teste_deadlines/deadlines.csv</code>"
             )
             return
 
