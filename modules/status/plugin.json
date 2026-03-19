@@ -1,0 +1,6 @@
+{
+  "name": "status",
+  "version": "0.1.0",
+  "enabled": true,
+  "entrypoint": "modules.status.module:create_module"
+}

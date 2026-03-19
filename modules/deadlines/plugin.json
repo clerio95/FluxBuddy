@@ -1,0 +1,6 @@
+{
+  "name": "deadlines",
+  "version": "0.1.0",
+  "enabled": true,
+  "entrypoint": "modules.deadlines.module:create_module"
+}

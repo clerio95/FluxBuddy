@@ -1,0 +1,6 @@
+{
+  "name": "occurrences",
+  "version": "0.1.0",
+  "enabled": true,
+  "entrypoint": "modules.occurrences.module:create_module"
+}
