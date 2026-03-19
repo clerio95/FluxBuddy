@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from dotenv import load_dotenv
 
@@ -40,6 +40,18 @@ def _parse_ids(raw: str) -> list[int]:
     return [int(x) for x in re.findall(r"\d+", raw)] if raw.strip() else []
 
 
+def _load_timezone(tz_name: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(tz_name)
+    except ZoneInfoNotFoundError:
+        sys.exit(
+            "ERROR: APP_TIMEZONE is invalid or timezone data is unavailable. "
+            f"Value: '{tz_name}'. "
+            "Install dependencies with setup.bat (or `pip install tzdata`) "
+            "and consider using APP_TIMEZONE=UTC if needed."
+        )
+
+
 def load_settings() -> Settings:
     """Load and validate settings from .env file."""
     load_dotenv()
@@ -62,5 +74,5 @@ def load_settings() -> Settings:
         default_role=os.getenv("DEFAULT_ROLE", "none").strip().lower(),
         log_max_bytes=int(os.getenv("LOG_MAX_BYTES", str(50 * 1024 * 1024))),
         log_file=os.getenv("LOG_FILE", "logs/fluxbuddy.log").strip(),
-        timezone=ZoneInfo(tz_name),
+        timezone=_load_timezone(tz_name),
     )
