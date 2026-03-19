@@ -33,7 +33,7 @@ if not defined VENV_PYTHON (
     )
 
     echo Creating virtual environment...
-    %PYTHON_CMD% -m venv .venv
+    !PYTHON_CMD! -m venv .venv
     if errorlevel 1 (
         echo Failed to create the virtual environment.
         pause
