@@ -2,16 +2,35 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyd
 *.so
+.python-version
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytype/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 .venv/
 venv/
 env/
+ENV/
 *.egg-info/
+.eggs/
+pip-wheel-metadata/
 dist/
 build/
+site/
 
 # Environment
 .env
+.env.*
+!.env.example
 
 # Logs and data
 logs/*.log
